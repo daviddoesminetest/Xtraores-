@@ -1,0 +1,20 @@
+nickel 100 lv1 ct2
+platinum -85 lv2 ct5
+palladium -250 lv3 ct12
+cobalt -600 lv4 ct20
+thorium -1250 antracite -2000 lv5 ct32
+osmium -3500 lv6 ct45
+rhenium -5750 lv7 ct60
+vanadium -8000 lv8 ct75
+rarium -10000 lv9 ct95
+orichalcum -12500 lv10 ct120
+titanium, uranium -15000 lv11 ct145
+chromium, iridium -18000 lv12 ct180
+adamantium -20000 lv13 ct225
+unobtanium -22500 lv14 ct270
+ultigemite -26000 lv15 ct360
+
+
+
+
+
