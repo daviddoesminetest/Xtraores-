@@ -1,3 +1,5 @@
+if minetest.settings:get("xtraores_enable_guns") == "true" then
+
 -----------------------revolver---------------
 
 minetest.register_tool("xtraores:platinum_revolver", {
@@ -733,3 +735,5 @@ minetest.register_craft({
 		{'', 'xtraores:titanium_bar', ''},
 	}
 })
+
+end

@@ -80,8 +80,9 @@ minetest.register_craftitem('xtraores:chromium_bar', {
 	stack_max= 999,
 })
 
---------------------handles-------------
+if minetest.settings:get("xtraores_enable_guns") == "true" then
 
+--------------------handles-------------
 minetest.register_craftitem('xtraores:steel_handle', {
 		description = "".. core.colorize("#68fff6", "Steel handle\n")..core.colorize("#FFFFFF", "Material\n")..core.colorize("#FFFFFF", "Xtraores material level: 5-8"),
 	inventory_image = "xtraores_steel_handle.png",
@@ -382,3 +383,4 @@ minetest.register_craft({
 	}
 })
 
+end

@@ -1,0 +1,2 @@
+#    If true, enable craftable guns
+xtraores_enable_guns (Enable guns) bool false
