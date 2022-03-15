@@ -80,8 +80,6 @@ minetest.register_craftitem('xtraores:chromium_bar', {
 	stack_max= 999,
 })
 
-if minetest.settings:get("xtraores_enable_guns") == "true" then
-
 --------------------handles-------------
 minetest.register_craftitem('xtraores:steel_handle', {
 		description = "".. core.colorize("#68fff6", "Steel handle\n")..core.colorize("#FFFFFF", "Material\n")..core.colorize("#FFFFFF", "Xtraores material level: 5-8"),
@@ -112,6 +110,8 @@ minetest.register_craft({
 		{'default:glass', '', ''},
 	}
 })
+
+if minetest.settings:get("xtraores_enable_guns") == "true" then
 
 --------------------revolverparts-------------
 
