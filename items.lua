@@ -90,9 +90,9 @@ minetest.register_craftitem('xtraores:steel_handle', {
 minetest.register_craft({
 	output = 'xtraores:steel_handle 5',
 	recipe = {
-		{'', '', 'default:steel_ingot'},
-		{'', 'default:steel_ingot', ''},
 		{'default:steel_ingot', '', ''},
+		{'', 'default:steel_ingot', ''},
+		{'', '', 'default:steel_ingot'},
 	}
 })
 
