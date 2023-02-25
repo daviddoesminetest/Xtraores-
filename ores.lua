@@ -1,200 +1,158 @@
----------------------nickel---------------------
-minetest.register_node("xtraores:nickel_ore", {
-    description = "" .. core.colorize("#68fff6", "Nickel ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 1"),
-    tiles = {"default_stone.png^xtraores_nickel_ore.png"},
-    inventory_image = "xtraores_nickel_lump.png",
-    stack_max = 999,
-    groups = {cracky = 3},
-    sounds = default.node_sound_stone_defaults()
-})
+local noop = function() end
 
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:nickel_ore",
-    wherein = "default:stone",
+-- API function to help registering an Xtraores ore.
+--
+-- name: is the ore name, with capital letters if applicable (ex: "Nickel" or "Rare Nickel")
+-- def: is a table with the options to be registered.
+function xtraores.register_xtraore(name, def)
+    local lname = string.lower(name):gsub(" ", "_")
+
+    -- Register the node to generate in world.
+    local nodedef = {
+        description = core.colorize("#68fff6", name .. " ore") ..
+            "\n(Xtraores Level: " .. def.level .. ")",
+        tiles = {"default_stone.png^xtraores_" .. lname .. "_ore.png"},
+        inventory_image = "xtraores_" .. lname .. "_lump.png",
+        stack_max = 999,
+        groups = def.groups,
+        sounds = default.node_sound_stone_defaults()
+    }
+    -- Tile animation active
+    if def.animate_tiles then
+        nodedef.tiles = {"default_stone.png"}
+        nodedef.overlay_tiles = {
+            {
+                name = "xtraores_" .. lname .. "_ore.png",
+                animation = {
+                    type = "vertical_frames",
+                    aspect_w = 16,
+                    aspect_h = 16,
+                    length = 2.0
+                }
+            }
+        }
+    end
+    -- Add light source to node
+    if def.light_source then nodedef.light_source = def.light_source end
+    -- Disable the on_blast behavior to prevent explosion breaking it
+    if def.disable_on_blast then nodedef.on_blast = noop end
+    minetest.register_node("xtraores:" .. lname .. "_ore", nodedef)
+
+    -- Register the ore cluster spawn chance for the mapgen
+    minetest.register_ore({
+        ore_type = "scatter",
+        ore = "xtraores:" .. lname .. "_ore",
+        wherein = "default:stone",
+        clust_scarcity = def.clust_scarcity,
+        clust_num_ores = def.clust_num_ores,
+        clust_size = def.clust_size,
+        y_min = def.y_min,
+        y_max = def.y_max
+    })
+
+    -- Register a craft recipe for the ore
+    if def.cooktime > 0 then
+        minetest.register_craft({
+            type = "cooking",
+            cooktime = def.cooktime,
+            output = "xtraores:" .. lname .. "_bar",
+            recipe = "xtraores:" .. lname .. "_ore"
+        })
+    end
+end
+
+xtraores.register_xtraore("Nickel", {
+    -- Xtraores Level
+    level = 1,
+    -- Node Groups
+    groups = {cracky = 3},
+    -- Ore clusters
     clust_scarcity = 16 * 16 * 16,
     clust_num_ores = 4,
     clust_size = 4,
     y_min = -31000,
-    y_max = 100
+    y_max = 100,
+    -- Bar cooking time
+    cooktime = 2
 })
 
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:nickel_ore",
-    wherein = "default:stone",
-    clust_scarcity = 9 * 9 * 9,
-    clust_num_ores = 4,
-    clust_size = 4,
-    y_min = -31000,
-    y_max = -1
-})
-
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 2,
-    output = "xtraores:nickel_bar",
-    recipe = "xtraores:nickel_ore"
-})
-
----------------------platinum---------------------
-
-minetest.register_node("xtraores:platinum_ore", {
-    description = "" .. core.colorize("#68fff6", "Platinum ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 2"),
-    tiles = {"default_stone.png^xtraores_platinum_ore.png"},
-    inventory_image = "xtraores_platinum_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Platinum", {
+    -- Xtraores Level
+    level = 2,
+    -- Node Groups
     groups = {cracky = 2},
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:platinum_ore",
-    wherein = "default:stone",
+    -- Ore clusters
     clust_scarcity = 12 * 12 * 12,
     clust_num_ores = 4,
     clust_size = 4,
     y_min = -31000,
-    y_max = -85
+    y_max = -85,
+    -- Bar cooking time
+    cooktime = 5
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 5,
-    output = "xtraores:platinum_bar",
-    recipe = "xtraores:platinum_ore"
-})
-
----------------------palladium---------------------
-
-minetest.register_node("xtraores:palladium_ore", {
-    description = "" .. core.colorize("#68fff6", "palladium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 3"),
-    tiles = {"default_stone.png^xtraores_palladium_ore.png"},
-    inventory_image = "xtraores_palladium_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Palladium", {
+    -- Xtraores Level
+    level = 3,
+    -- Node Groups
     groups = {cracky = 1},
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:palladium_ore",
-    wherein = "default:stone",
+    -- Ore clusters
     clust_scarcity = 15 * 15 * 15,
     clust_num_ores = 4,
     clust_size = 4,
     y_min = -31000,
-    y_max = -250
+    y_max = -250,
+    -- Bar cooking time
+    cooktime = 12
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 12,
-    output = "xtraores:palladium_bar",
-    recipe = "xtraores:palladium_ore"
-})
-
----------------------cobalt---------------------
-
-minetest.register_node("xtraores:cobalt_ore", {
-    description = "" .. core.colorize("#68fff6", "Cobalt ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 4"),
-    tiles = {"default_stone.png^xtraores_cobalt_ore.png"},
-    inventory_image = "xtraores_cobalt_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Cobalt", {
+    -- Xtraores Level
+    level = 4,
+    -- Node Groups
     groups = {cracky = 4},
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:cobalt_ore",
-    wherein = "default:stone",
+    -- Ore clusters
     clust_scarcity = 17 * 17 * 17,
     clust_num_ores = 4,
     clust_size = 4,
     y_min = -31000,
-    y_max = -600
+    y_max = -600,
+    -- Bar cooking time
+    cooktime = 20
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 20,
-    output = "xtraores:cobalt_bar",
-    recipe = "xtraores:cobalt_ore"
-})
-
----------------------thorium---------------------
-
-minetest.register_node("xtraores:thorium_ore", {
-    description = "" .. core.colorize("#68fff6", "Thorium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 5"),
-    tiles = {"default_stone.png^xtraores_thorium_ore.png"},
-    inventory_image = "xtraores_thorium_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Thorium", {
+    -- Xtraores Level
+    level = 5,
+    -- Node Groups
     groups = {cracky = 5},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:thorium_ore",
-    wherein = "default:stone",
+    -- Ore clusters
     clust_scarcity = 19 * 19 * 19,
     clust_num_ores = 4,
     clust_size = 4,
     y_min = -31000,
-    y_max = -1250
+    y_max = -1250,
+    -- Bar cooking time
+    cooktime = 32
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 32,
-    output = "xtraores:thorium_bar",
-    recipe = "xtraores:thorium_ore"
-})
-
------------------antracite ore--------------
-
-minetest.register_node("xtraores:antracite_ore", {
-    description = "" .. core.colorize("#68fff6", "antracite\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 5"),
-    tiles = {"default_stone.png^xtraores_antracite_ore.png"},
-    inventory_image = "xtraores_antracite_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Antracite", {
+    -- Xtraores level
+    level = 5,
+    -- Node Groups
     groups = {cracky = 5},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:antracite_ore",
-    wherein = "default:stone",
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
     clust_scarcity = 15 * 15 * 15,
     clust_num_ores = 6,
     clust_size = 5,
     y_min = -31000,
-    y_max = -2000
+    y_max = -2000,
+    -- No bar Cooking, Antracite can be used as a fuel and to light special
+    -- torches
+    cooktime = -1
 })
-
 minetest.register_craft({
     output = 'xtraores:antracite_torch 5',
     recipe = {
@@ -202,295 +160,146 @@ minetest.register_craft({
         {'', 'xtraores:steel_handle', ''}
     }
 })
-
 minetest.register_craft({
     type = "fuel",
     recipe = "xtraores:antracite_ore",
     burntime = 164
 })
 
----------------------osmium---------------------
-
-minetest.register_node("xtraores:osmium_ore", {
-    description = "" .. core.colorize("#68fff6", "Osmium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 6"),
-    tiles = {"default_stone.png^xtraores_osmium_ore.png"},
-    inventory_image = "xtraores_osmium_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Osmium", {
+    -- Xtraores level
+    level = 6,
+    -- Special Visuals
+    light_source = 2,
+    -- Node Groups
     groups = {cracky = 6},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:osmium_ore",
-    wherein = "default:stone",
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
     clust_scarcity = 21 * 21 * 21,
     clust_num_ores = 4,
     clust_size = 4,
     y_min = -31000,
-    y_max = -3500
+    y_max = -3500,
+    -- Bar cooking
+    cooktime = 45
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 45,
-    output = "xtraores:osmium_bar",
-    recipe = "xtraores:osmium_ore"
-})
-
----------------------rhenium---------------------
-
-minetest.register_node("xtraores:rhenium_ore", {
-    description = "" .. core.colorize("#68fff6", "Rhenium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 7"),
-    tiles = {"default_stone.png^xtraores_rhenium_ore.png"},
-    inventory_image = "xtraores_rhenium_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Rhenium", {
+    -- Xtraores level
+    level = 7,
+    -- Special Visuals
+    light_source = 2,
+    -- Node Groups
     groups = {cracky = 7},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:rhenium_ore",
-    wherein = "default:stone",
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
     clust_scarcity = 23 * 23 * 23,
     clust_num_ores = 4,
     clust_size = 4,
     y_min = -31000,
-    y_max = -5750
+    y_max = -5750,
+    -- Bar cooking
+    cooktime = 60
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 60,
-    output = "xtraores:rhenium_bar",
-    recipe = "xtraores:rhenium_ore"
-})
-
----------------------vanadium---------------------
-
-minetest.register_node("xtraores:vanadium_ore", {
-    description = "" .. core.colorize("#68fff6", "vanadium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 8"),
-    tiles = {"default_stone.png^xtraores_vanadium_ore.png"},
-    inventory_image = "xtraores_vanadium_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Vanadium", {
+    -- Xtraores level
+    level = 8,
+    -- Special Visuals
+    animate_tiles = true,
+    light_source = 3,
+    -- Node Groups
     groups = {cracky = 8},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:vanadium_ore",
-    wherein = "default:stone",
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
     clust_scarcity = 26 * 26 * 26,
     clust_num_ores = 4,
     clust_size = 4,
     y_min = -31000,
-    y_max = -8000
+    y_max = -8000,
+    -- Bar cooking
+    cooktime = 75
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 75,
-    output = "xtraores:vanadium_bar",
-    recipe = "xtraores:vanadium_ore"
-})
-
----------------------rarium---------------------
-
-minetest.register_node("xtraores:rarium_ore", {
-    description = "" .. core.colorize("#68fff6", "Rarium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 9"),
-    tiles = {
-        {
-            name = "xtraores_rarium_ore.png",
-            animation = {
-                type = "vertical_frames",
-                aspect_w = 16,
-                aspect_h = 16,
-                length = 1.0
-            }
-        }
-    },
+xtraores.register_xtraore("Rarium", {
+    -- Xtraores level
+    level = 9,
+    -- Special Visuals
+    animate_tiles = true,
     light_source = 4,
-    inventory_image = "xtraores_rarium_lump.png",
-    stack_max = 999,
+    -- Node Groups
     groups = {cracky = 9},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:rarium_ore",
-    wherein = "default:stone",
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
     clust_scarcity = 30 * 30 * 30,
     clust_num_ores = 3,
     clust_size = 3,
     y_min = -31000,
-    y_max = -10000
+    y_max = -10000,
+    -- Bar cooking
+    cooktime = 90
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 90,
-    output = "xtraores:rarium_bar",
-    recipe = "xtraores:rarium_ore"
-})
-
----------------------orichalcum---------------------
-
-minetest.register_node("xtraores:orichalcum_ore", {
-    description = "" .. core.colorize("#68fff6", "Orichalcum ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 10"),
-    tiles = {"default_stone.png^xtraores_orichalcum_ore.png"},
-    inventory_image = "xtraores_orichalcum_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Titanium", {
+    -- Xtraores level
+    level = 10,
+    -- Special Visuals
+    animate_tiles = true,
+    light_source = 4,
+    -- Node Groups
     groups = {cracky = 10},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:orichalcum_ore",
-    wherein = "default:stone",
-    clust_scarcity = 34 * 34 * 34,
-    clust_num_ores = 3,
-    clust_size = 3,
-    y_min = -31000,
-    y_max = -12500
-})
-
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 120,
-    output = "xtraores:orichalcum_bar",
-    recipe = "xtraores:orichalcum_ore"
-})
-
----------------------titanium---------------------
-
-minetest.register_node("xtraores:titanium_ore", {
-    description = "" .. core.colorize("#68fff6", "titanium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 11"),
-    tiles = {"default_stone.png^xtraores_titanium_ore.png"},
-    inventory_image = "xtraores_titanium_lump.png",
-    stack_max = 999,
-    groups = {cracky = 11},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:titanium_ore",
-    wherein = "default:stone",
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
     clust_scarcity = 36 * 36 * 36,
     clust_num_ores = 3,
     clust_size = 3,
     y_min = -31000,
-    y_max = -15000
+    y_max = -15000,
+    -- Bar cooking
+    cooktime = 145
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 145,
-    output = "xtraores:titanium_bar",
-    recipe = "xtraores:titanium_ore"
-})
-
----------------------uranium---------------------
-
-minetest.register_node("xtraores:uranium_ore", {
-    description = "" .. core.colorize("#68fff6", "uranium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 11"),
-    tiles = {
-        {
-            name = "xtraores_uranium_ore.png",
-            animation = {
-                type = "vertical_frames",
-                aspect_w = 16,
-                aspect_h = 16,
-                length = 1.0
-            }
-        }
-    },
-    light_source = 7,
-    inventory_image = "xtraores_uranium_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Uranium", {
+    -- Xtraores level
+    level = 11,
+    -- Special Visuals
+    animate_tiles = true,
+    light_source = 9,
+    -- Node Groups
     groups = {cracky = 11},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:uranium_ore",
-    wherein = "default:stone",
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
     clust_scarcity = 37 * 37 * 37,
     clust_num_ores = 2,
     clust_size = 3,
     y_min = -31000,
-    y_max = -15000
+    y_max = -15000,
+    -- Bar cooking
+    cooktime = 145
 })
 
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 145,
-    output = "xtraores:uranium_bar",
-    recipe = "xtraores:uranium_ore"
-})
-
----------------------chromium---------------------
-
-minetest.register_node("xtraores:chromium_ore", {
-    description = "" .. core.colorize("#68fff6", "chromium ore\n") ..
-        core.colorize("#FFFFFF", "Can be placed\n") ..
-        core.colorize("#FFFFFF", "Material\n") ..
-        core.colorize("#FFFFFF", "Xtraores ore level: 12"),
-    tiles = {"default_stone.png^xtraores_chromium_ore.png"},
-    inventory_image = "xtraores_chromium_lump.png",
-    stack_max = 999,
+xtraores.register_xtraore("Chromium", {
+    -- Xtraores level
+    level = 12,
+    -- Special Visuals
+    animate_tiles = true,
+    light_source = 10,
+    -- Node Groups
     groups = {cracky = 12},
-    on_blast = function() end,
-    sounds = default.node_sound_stone_defaults()
-})
-
-minetest.register_ore({
-    ore_type = "scatter",
-    ore = "xtraores:chromium_ore",
-    wherein = "default:stone",
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
     clust_scarcity = 38 * 38 * 38,
     clust_num_ores = 3,
     clust_size = 3,
     y_min = -31000,
-    y_max = -18000
-})
-
-minetest.register_craft({
-    type = "cooking",
-    cooktime = 180,
-    output = "xtraores:chromium_bar",
-    recipe = "xtraores:chromium_ore"
+    y_max = -18000,
+    -- Bar cooking
+    cooktime = 180
 })

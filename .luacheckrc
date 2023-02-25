@@ -7,7 +7,7 @@ globals = {
 
     -- Mods
     "respawn", "mobs", "unified_inventory",
-    "armor", "awards"
+    "armor", "awards", "xtraores"
 }
 
 read_globals = {
