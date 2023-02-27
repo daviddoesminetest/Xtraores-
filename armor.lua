@@ -1,2353 +1,359 @@
 if minetest.get_modpath("3d_armor") then
+    -- Helper to format item description
+    local tpl = "Protection: %d%%\nHeal chance: %d%%\n" ..
+                    "Speed bonus: %d%%\nJump bonus: %d%%\nGravity bonus: %d%%\n" ..
+                    "Xtraores armor level: %d"
 
-    ----------------nickel set----------------------
+    -- Helper to setup the armor set attributes
+    local ArmorSet = {
+        name = "",
+        level = 0,
 
-    armor:register_armor("xtraores:helmet_nickel", {
-        description = "" .. core.colorize("#68fff6", "Nickel helm\n") ..
-            core.colorize("#FFFFFF", "Protection: 7%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 0%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 1"),
-        inventory_image = "xtraores_inv_helmet_nickel.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 0,
-            armor_use = 1200,
-            physics_speed = -0.01,
-            physics_gravity = 0.01
-        },
-        armor_groups = {fleshy = 7},
-        damage_groups = {
+        protection = 0,
+        heal = 0,
+        speed_bonus = 0,
+        gravity_bonus = 0,
+        jump_bonus = 0,
+        armor_use = 0,
+
+        helmet = {},
+        chestplate = {},
+        leggings = {},
+        boots = {},
+        shield = {},
+
+        new = function(self, o)
+            o = o or {}
+            setmetatable(o, self)
+            self.__index = self
+            return o
+        end,
+
+        attr = function(self, part, attr)
+            if self[part] and self[part][attr] then
+                return self[part][attr]
+            end
+            return self[attr]
+        end,
+
+        part_name = function(self, part)
+            if self[part]['name'] then return self[part]['name'] end
+            return part
+        end,
+
+        descr = function(self, part)
+            local n = self.name .. " " .. self:part_name(part) .. "\n"
+            local d = tpl:format(self:attr(part, "protection"),
+                                 self:attr(part, "heal"),
+                                 self:attr(part, "speed_bonus") * 100,
+                                 self:attr(part, "jump_bonus") * 100,
+                                 self:attr(part, "gravity_bonus") * 100,
+                                 self.level)
+            return core.colorize("#68fff6", n) .. core.colorize("#FFFFFF", d)
+        end,
+
+        groups = function(self, part)
+            -- All attributes are applied for all parts, checking with the attr
+            -- for overrides over the set settings first.
+            local g = {
+                armor_heal = self:attr(part, "heal"),
+                armor_use = self:attr(part, "use"),
+                physics_speed = self:attr(part, "speed_bonus"),
+                physics_gravity = self:attr(part, "gravity_bonus")
+            }
+            -- Set the valid properties for each armor part in the set
+            if part == "helmet" then
+                g.armor_head = 1
+            elseif part == "chestplate" then
+                g.armor_torso = 1
+            elseif part == "leggings" then
+                g.armor_legs = 1
+            elseif part == "boots" then
+                g.armor_feet = 1
+            elseif part == "shield" then
+                g.armor_shield = 1
+            end
+            return g
+        end
+    }
+
+    function xtraores.register_armor_set(set)
+        -- Internal name
+        local lname = string.lower(set.name):gsub(" ", "_")
+        local ingot = 'xtraores:' .. set.name .. "_bar"
+        -- All parts share the same damage group values
+        local damage_groups = {
             cracky = 2,
             snappy = 3,
             choppy = 2,
             crumbly = 1,
             level = 2
         }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:helmet_nickel',
-        recipe = {
-            {
-                'xtraores:nickel_bar', 'xtraores:nickel_bar',
-                'xtraores:nickel_bar'
-            }, {'xtraores:nickel_bar', '', 'xtraores:nickel_bar'}, {'', '', ''}
-        }
-    })
-
-    armor:register_armor("xtraores:chestplate_nickel", {
-        description = "" .. core.colorize("#68fff6", "Nickel chestguard\n") ..
-            core.colorize("#FFFFFF", "Protection: 12%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 0%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 1"),
-        inventory_image = "xtraores_inv_chestplate_nickel.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 0,
-            armor_use = 1200,
-            physics_speed = -0.01,
-            physics_gravity = 0.01
-        },
-        armor_groups = {fleshy = 12},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:chestplate_nickel',
-        recipe = {
-            {'xtraores:nickel_bar', '', 'xtraores:nickel_bar'},
-            {
-                'xtraores:nickel_bar', 'xtraores:nickel_bar',
-                'xtraores:nickel_bar'
+        local armor_parts = {
+            helmet = { -- helmet recipe
+                {ingot, ingot, ingot}, {ingot, '', ingot}, {'', '', ''}
             },
-            {
-                'xtraores:nickel_bar', 'xtraores:nickel_bar',
-                'xtraores:nickel_bar'
+            chestplate = { -- chestplate recipe
+                {ingot, '', ingot}, {ingot, ingot, ingot}, {ingot, ingot, ingot}
+            },
+            leggings = { -- leggings recipe
+                {ingot, ingot, ingot}, {ingot, '', ingot}, {ingot, '', ingot}
+            },
+            boots = { -- boots recipe
+                {'', '', ''}, {ingot, '', ingot}, {ingot, '', ingot}
+            },
+            shield = { -- shield recipe
+                {ingot, ingot, ingot}, {ingot, ingot, ingot}, {'', ingot, ''}
             }
         }
-    })
-
-    armor:register_armor("xtraores:leggings_nickel", {
-        description = "" .. core.colorize("#68fff6", "Nickel leg protectors\n") ..
-            core.colorize("#FFFFFF", "Protection: 12%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 0%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 1"),
-        inventory_image = "xtraores_inv_leggings_nickel.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 0,
-            armor_use = 1200,
-            physics_speed = -0.01,
-            physics_gravity = 0.01
-        },
-        armor_groups = {fleshy = 12},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:leggings_nickel',
-        recipe = {
-            {
-                'xtraores:nickel_bar', 'xtraores:nickel_bar',
-                'xtraores:nickel_bar'
-            }, {'xtraores:nickel_bar', '', 'xtraores:nickel_bar'},
-            {'xtraores:nickel_bar', '', 'xtraores:nickel_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:boots_nickel", {
-        description = "" .. core.colorize("#68fff6", "Nickel boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 7%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 0%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 1"),
-        inventory_image = "xtraores_inv_boots_nickel.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 0,
-            armor_use = 1200,
-            physics_speed = -0.01,
-            physics_gravity = 0.01
-        },
-        armor_groups = {fleshy = 7},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:boots_nickel',
-        recipe = {
-            {'', '', ''}, {'xtraores:nickel_bar', '', 'xtraores:nickel_bar'},
-            {'xtraores:nickel_bar', '', 'xtraores:nickel_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:shield_nickel", {
-        description = "" .. core.colorize("#68fff6", "Nickel buckler\n") ..
-            core.colorize("#FFFFFF", "Protection: 7%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 0%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 1"),
-        inventory_image = "xtraores_inv_shield_nickel.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 0,
-            armor_use = 1200,
-            physics_speed = -0.01,
-            physics_gravity = 0.01
-        },
-        armor_groups = {fleshy = 7},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:shield_nickel',
-        recipe = {
-            {
-                'xtraores:nickel_bar', 'xtraores:nickel_bar',
-                'xtraores:nickel_bar'
-            },
-            {
-                'xtraores:nickel_bar', 'xtraores:nickel_bar',
-                'xtraores:nickel_bar'
-            }, {'', 'xtraores:nickel_bar', ''}
-        }
-    })
-
-    ----------------platinum set----------------------
-
-    armor:register_armor("xtraores:helmet_platinum", {
-        description = "" .. core.colorize("#68fff6", "Platinum chain-helm\n") ..
-            core.colorize("#FFFFFF", "Protection: 12%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 2"),
-        inventory_image = "xtraores_inv_helmet_platinum.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 7,
-            armor_use = 200,
-            physics_speed = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 12},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:helmet_platinum',
-        recipe = {
-            {
-                'xtraores:platinum_bar', 'xtraores:platinum_bar',
-                'xtraores:platinum_bar'
-            }, {'xtraores:platinum_bar', '', 'xtraores:platinum_bar'},
-            {'', '', ''}
-        }
-    })
-
-    armor:register_armor("xtraores:chestplate_platinum", {
-        description = "" .. core.colorize("#68fff6", "Platinum chainmail\n") ..
-            core.colorize("#FFFFFF", "Protection: 17%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 2"),
-        inventory_image = "xtraores_inv_chestplate_platinum.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 7,
-            armor_use = 200,
-            physics_speed = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 17},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:chestplate_platinum',
-        recipe = {
-            {'xtraores:platinum_bar', '', 'xtraores:platinum_bar'},
-            {
-                'xtraores:platinum_bar', 'xtraores:platinum_bar',
-                'xtraores:platinum_bar'
-            },
-            {
-                'xtraores:platinum_bar', 'xtraores:platinum_bar',
-                'xtraores:platinum_bar'
-            }
-        }
-    })
-
-    armor:register_armor("xtraores:leggings_platinum", {
-        description = "" ..
-            core.colorize("#68fff6", "Platinum chain leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 17%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 2"),
-        inventory_image = "xtraores_inv_leggings_platinum.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 7,
-            armor_use = 200,
-            physics_speed = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 17},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:leggings_platinum',
-        recipe = {
-            {
-                'xtraores:platinum_bar', 'xtraores:platinum_bar',
-                'xtraores:platinum_bar'
-            }, {'xtraores:platinum_bar', '', 'xtraores:platinum_bar'},
-            {'xtraores:platinum_bar', '', 'xtraores:platinum_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:boots_platinum", {
-        description = "" .. core.colorize("#68fff6", "Platinum chained boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 12%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 2"),
-        inventory_image = "xtraores_inv_boots_platinum.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 7,
-            armor_use = 200,
-            physics_speed = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 12},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:boots_platinum',
-        recipe = {
-            {'', '', ''},
-            {'xtraores:platinum_bar', '', 'xtraores:platinum_bar'},
-            {'xtraores:platinum_bar', '', 'xtraores:platinum_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:shield_platinum", {
-        description = "" .. core.colorize("#68fff6", "Platinum small-shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 12%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 2"),
-        inventory_image = "xtraores_inv_shield_platinum.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 7,
-            armor_use = 200,
-            physics_speed = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 12},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:shield_platinum',
-        recipe = {
-            {
-                'xtraores:platinum_bar', 'xtraores:platinum_bar',
-                'xtraores:platinum_bar'
-            },
-            {
-                'xtraores:platinum_bar', 'xtraores:platinum_bar',
-                'xtraores:platinum_bar'
-            }, {'', 'xtraores:platinum_bar', ''}
-        }
-    })
-
-    ----------------palladium set----------------------
-
-    armor:register_armor("xtraores:helmet_palladium", {
-        description = "" .. core.colorize("#68fff6", "Palladium helmet\n") ..
-            core.colorize("#FFFFFF", "Protection: 15%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 3"),
-        inventory_image = "xtraores_inv_helmet_palladium.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12,
-            armor_use = 150,
-            physics_speed = 0.03,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:helmet_palladium',
-        recipe = {
-            {
-                'xtraores:palladium_bar', 'xtraores:palladium_bar',
-                'xtraores:palladium_bar'
-            }, {'xtraores:palladium_bar', '', 'xtraores:palladium_bar'},
-            {'', '', ''}
-        }
-    })
-
-    armor:register_armor("xtraores:chestplate_palladium", {
-        description = "" .. core.colorize("#68fff6", "Palladium platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 20%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 3"),
-        inventory_image = "xtraores_inv_chestplate_palladium.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12,
-            armor_use = 150,
-            physics_speed = 0.03,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 20},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:chestplate_palladium',
-        recipe = {
-            {'xtraores:palladium_bar', '', 'xtraores:palladium_bar'},
-            {
-                'xtraores:palladium_bar', 'xtraores:palladium_bar',
-                'xtraores:palladium_bar'
-            },
-            {
-                'xtraores:palladium_bar', 'xtraores:palladium_bar',
-                'xtraores:palladium_bar'
-            }
-        }
-    })
-
-    armor:register_armor("xtraores:leggings_palladium", {
-        description = "" .. core.colorize("#68fff6", "Palladium leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 20%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 3"),
-        inventory_image = "xtraores_inv_leggings_palladium.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12,
-            armor_use = 150,
-            physics_speed = 0.03,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 20},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:leggings_palladium',
-        recipe = {
-            {
-                'xtraores:palladium_bar', 'xtraores:palladium_bar',
-                'xtraores:palladium_bar'
-            }, {'xtraores:palladium_bar', '', 'xtraores:palladium_bar'},
-            {'xtraores:palladium_bar', '', 'xtraores:palladium_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:boots_palladium", {
-        description = "" .. core.colorize("#68fff6", "Palladium boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 15%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 3"),
-        inventory_image = "xtraores_inv_boots_palladium.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12,
-            armor_use = 150,
-            physics_speed = 0.03,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:boots_palladium',
-        recipe = {
-            {'', '', ''},
-            {'xtraores:palladium_bar', '', 'xtraores:palladium_bar'},
-            {'xtraores:palladium_bar', '', 'xtraores:palladium_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:shield_palladium", {
-        description = "" .. core.colorize("#68fff6", "Palladium shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 15%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 3"),
-        inventory_image = "xtraores_inv_shield_palladium.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12,
-            armor_use = 150,
-            physics_speed = 0.03,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:shield_palladium',
-        recipe = {
-            {
-                'xtraores:palladium_bar', 'xtraores:palladium_bar',
-                'xtraores:palladium_bar'
-            },
-            {
-                'xtraores:palladium_bar', 'xtraores:palladium_bar',
-                'xtraores:palladium_bar'
-            }, {'', 'xtraores:palladium_bar', ''}
-        }
-    })
-
-    ----------------cobalt set----------------------
-
-    armor:register_armor("xtraores:helmet_cobalt", {
-        description = "" .. core.colorize("#68fff6", "Cobalt helmet\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.1%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 7%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 4"),
-        inventory_image = "xtraores_inv_helmet_cobalt.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.1,
-            armor_use = 100,
-            physics_speed = 0.07,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:helmet_cobalt',
-        recipe = {
-            {
-                'xtraores:cobalt_bar', 'xtraores:cobalt_bar',
-                'xtraores:cobalt_bar'
-            }, {'xtraores:cobalt_bar', '', 'xtraores:cobalt_bar'}, {'', '', ''}
-        }
-    })
-
-    armor:register_armor("xtraores:chestplate_cobalt", {
-        description = "" .. core.colorize("#68fff6", "Cobalt platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 20.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.1%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 7%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 4"),
-        inventory_image = "xtraores_inv_chestplate_cobalt.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.1,
-            armor_use = 100,
-            physics_speed = 0.07,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 20.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:chestplate_cobalt',
-        recipe = {
-            {'xtraores:cobalt_bar', '', 'xtraores:cobalt_bar'},
-            {
-                'xtraores:cobalt_bar', 'xtraores:cobalt_bar',
-                'xtraores:cobalt_bar'
-            },
-            {
-                'xtraores:cobalt_bar', 'xtraores:cobalt_bar',
-                'xtraores:cobalt_bar'
-            }
-        }
-    })
-
-    armor:register_armor("xtraores:leggings_cobalt", {
-        description = "" .. core.colorize("#68fff6", "Cobalt leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 20.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.1%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 7%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 4"),
-        inventory_image = "xtraores_inv_leggings_cobalt.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.1,
-            armor_use = 100,
-            physics_speed = 0.07,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 20.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:leggings_cobalt',
-        recipe = {
-            {
-                'xtraores:cobalt_bar', 'xtraores:cobalt_bar',
-                'xtraores:cobalt_bar'
-            }, {'xtraores:cobalt_bar', '', 'xtraores:cobalt_bar'},
-            {'xtraores:cobalt_bar', '', 'xtraores:cobalt_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:boots_cobalt", {
-        description = "" .. core.colorize("#68fff6", "Cobalt boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.1%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 7%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 4"),
-        inventory_image = "xtraores_inv_boots_cobalt.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.1,
-            armor_use = 100,
-            physics_speed = 0.07,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:boots_cobalt',
-        recipe = {
-            {'', '', ''}, {'xtraores:cobalt_bar', '', 'xtraores:cobalt_bar'},
-            {'xtraores:cobalt_bar', '', 'xtraores:cobalt_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:shield_cobalt", {
-        description = "" .. core.colorize("#68fff6", "Cobalt shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.1%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 7%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 4"),
-        inventory_image = "xtraores_inv_shield_cobalt.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.1,
-            armor_use = 100,
-            physics_speed = 0.07,
-            physics_jump = 0.00,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:shield_cobalt',
-        recipe = {
-            {
-                'xtraores:cobalt_bar', 'xtraores:cobalt_bar',
-                'xtraores:cobalt_bar'
-            },
-            {
-                'xtraores:cobalt_bar', 'xtraores:cobalt_bar',
-                'xtraores:cobalt_bar'
-            }, {'', 'xtraores:cobalt_bar', ''}
-        }
-    })
-
-    ----------------thorium set----------------------
-
-    armor:register_armor("xtraores:helmet_thorium", {
-        description = "" .. core.colorize("#68fff6", "Thorium helmet\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.2%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 11%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 5"),
-        inventory_image = "xtraores_inv_helmet_thorium.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.2,
-            armor_use = 100,
-            physics_speed = 0.11,
-            physics_jump = 0.03,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:helmet_thorium',
-        recipe = {
-            {
-                'xtraores:thorium_bar', 'xtraores:thorium_bar',
-                'xtraores:thorium_bar'
-            }, {'xtraores:thorium_bar', '', 'xtraores:thorium_bar'},
-            {'', '', ''}
-        }
-    })
-
-    armor:register_armor("xtraores:chestplate_thorium", {
-        description = "" .. core.colorize("#68fff6", "Thorium platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 20.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.2%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 11%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 5"),
-        inventory_image = "xtraores_inv_chestplate_thorium.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.2,
-            armor_use = 100,
-            physics_speed = 0.11,
-            physics_jump = 0.03,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 20.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:chestplate_thorium',
-        recipe = {
-            {'xtraores:thorium_bar', '', 'xtraores:thorium_bar'},
-            {
-                'xtraores:thorium_bar', 'xtraores:thorium_bar',
-                'xtraores:thorium_bar'
-            },
-            {
-                'xtraores:thorium_bar', 'xtraores:thorium_bar',
-                'xtraores:thorium_bar'
-            }
-        }
-    })
 
-    armor:register_armor("xtraores:leggings_thorium", {
-        description = "" .. core.colorize("#68fff6", "Thorium leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 20.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.2%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 11%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 5"),
-        inventory_image = "xtraores_inv_leggings_thorium.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.2,
-            armor_use = 100,
-            physics_speed = 0.11,
-            physics_jump = 0.03,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 20.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:leggings_thorium',
-        recipe = {
-            {
-                'xtraores:thorium_bar', 'xtraores:thorium_bar',
-                'xtraores:thorium_bar'
-            }, {'xtraores:thorium_bar', '', 'xtraores:thorium_bar'},
-            {'xtraores:thorium_bar', '', 'xtraores:thorium_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:boots_thorium", {
-        description = "" .. core.colorize("#68fff6", "Thorium boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.2%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 11%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 5"),
-        inventory_image = "xtraores_inv_boots_thorium.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.2,
-            armor_use = 100,
-            physics_speed = 0.11,
-            physics_jump = 0.03,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:boots_thorium',
-        recipe = {
-            {'', '', ''}, {'xtraores:thorium_bar', '', 'xtraores:thorium_bar'},
-            {'xtraores:thorium_bar', '', 'xtraores:thorium_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:shield_thorium", {
-        description = "" .. core.colorize("#68fff6", "Thorium shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.2%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 11%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 3%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 5"),
-        inventory_image = "xtraores_inv_shield_thorium.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.2,
-            armor_use = 100,
-            physics_speed = 0.11,
-            physics_jump = 0.03,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:shield_thorium',
-        recipe = {
-            {
-                'xtraores:thorium_bar', 'xtraores:thorium_bar',
-                'xtraores:thorium_bar'
-            },
-            {
-                'xtraores:thorium_bar', 'xtraores:thorium_bar',
-                'xtraores:thorium_bar'
-            }, {'', 'xtraores:thorium_bar', ''}
-        }
-    })
-
-    ----------------osmium set----------------------
-
-    armor:register_armor("xtraores:helmet_osmium", {
-        description = "" .. core.colorize("#68fff6", "Osmium helmet\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.3%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 5%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 6"),
-        inventory_image = "xtraores_inv_helmet_osmium.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.3,
-            armor_use = 60,
-            physics_speed = 0.16,
-            physics_jump = 0.05,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:helmet_osmium',
-        recipe = {
-            {
-                'xtraores:osmium_bar', 'xtraores:osmium_bar',
-                'xtraores:osmium_bar'
-            }, {'xtraores:osmium_bar', '', 'xtraores:osmium_bar'}, {'', '', ''}
-        }
-    })
-
-    armor:register_armor("xtraores:chestplate_osmium", {
-        description = "" .. core.colorize("#68fff6", "Osmium platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 20.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.3%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 5%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 6"),
-        inventory_image = "xtraores_inv_chestplate_osmium.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.3,
-            armor_use = 60,
-            physics_speed = 0.16,
-            physics_jump = 0.05,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 20.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:chestplate_osmium',
-        recipe = {
-            {'xtraores:osmium_bar', '', 'xtraores:osmium_bar'},
-            {
-                'xtraores:osmium_bar', 'xtraores:osmium_bar',
-                'xtraores:osmium_bar'
-            },
-            {
-                'xtraores:osmium_bar', 'xtraores:osmium_bar',
-                'xtraores:osmium_bar'
-            }
-        }
-    })
-
-    armor:register_armor("xtraores:leggings_osmium", {
-        description = "" .. core.colorize("#68fff6", "Osmium leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 20.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.3%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 5%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 6"),
-        inventory_image = "xtraores_inv_leggings_osmium.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.3,
-            armor_use = 60,
-            physics_speed = 0.16,
-            physics_jump = 0.05,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 20.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:leggings_osmium',
-        recipe = {
-            {
-                'xtraores:osmium_bar', 'xtraores:osmium_bar',
-                'xtraores:osmium_bar'
-            }, {'xtraores:osmium_bar', '', 'xtraores:osmium_bar'},
-            {'xtraores:osmium_bar', '', 'xtraores:osmium_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:boots_osmium", {
-        description = "" .. core.colorize("#68fff6", "Osmium boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.3%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 5%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 6"),
-        inventory_image = "xtraores_inv_boots_osmium.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.3,
-            armor_use = 60,
-            physics_speed = 0.16,
-            physics_jump = 0.05,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:boots_osmium',
-        recipe = {
-            {'', '', ''}, {'xtraores:osmium_bar', '', 'xtraores:osmium_bar'},
-            {'xtraores:osmium_bar', '', 'xtraores:osmium_bar'}
-        }
-    })
-
-    armor:register_armor("xtraores:shield_osmium", {
-        description = "" .. core.colorize("#68fff6", "Osmium shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.3%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 5%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: 0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 6"),
-        inventory_image = "xtraores_inv_shield_osmium.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.3,
-            armor_use = 60,
-            physics_speed = 0.16,
-            physics_jump = 0.05,
-            physics_gravity = 0.00
-        },
-        armor_groups = {fleshy = 15.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:shield_osmium',
-        recipe = {
-            {
-                'xtraores:osmium_bar', 'xtraores:osmium_bar',
-                'xtraores:osmium_bar'
-            },
-            {
-                'xtraores:osmium_bar', 'xtraores:osmium_bar',
-                'xtraores:osmium_bar'
-            }, {'', 'xtraores:osmium_bar', ''}
-        }
-    })
+        for part, recipe in pairs(armor_parts) do
+            -- Helmet
+            armor:register_armor("xtraores:" .. part .. "_" .. lname, {
+                description = set:descr(part, set.name),
+                inventory_image = "xtraores_inv_" .. part .. "_" .. lname ..
+                    ".png",
+                groups = set:groups(part),
+                armor_groups = {fleshy = set:attr(part, "protection")},
+                damage_groups = damage_groups
+            })
+            minetest.register_craft({
+                output = "xtraores:" .. part .. "_" .. lname,
+                recipe = recipe
+            })
+        end
+    end
 
-    ----------------rhenium set----------------------
+    -- Nickel
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Nickel",
+        level = 1,
 
-    armor:register_armor("xtraores:helmet_rhenium", {
-        description = "" .. core.colorize("#68fff6", "Rhenium helmet\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.8%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.4%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 21%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 8%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 7"),
-        inventory_image = "xtraores_inv_helmet_rhenium.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.4,
-            armor_use = 40,
-            physics_speed = 0.21,
-            physics_jump = 0.08,
-            physics_gravity = -0.01
-        },
-        armor_groups = {fleshy = 15.8},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:helmet_rhenium',
-        recipe = {
-            {
-                'xtraores:rhenium_bar', 'xtraores:rhenium_bar',
-                'xtraores:rhenium_bar'
-            }, {'xtraores:rhenium_bar', '', 'xtraores:rhenium_bar'},
-            {'', '', ''}
-        }
-    })
+        protection = 7,
+        heal = 0,
 
-    armor:register_armor("xtraores:chestplate_rhenium", {
-        description = "" .. core.colorize("#68fff6", "Rhenium platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 20.8%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.4%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 21%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 8%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 7"),
-        inventory_image = "xtraores_inv_chestplate_rhenium.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.4,
-            armor_use = 40,
-            physics_speed = 0.21,
-            physics_jump = 0.08,
-            physics_gravity = -0.01
-        },
-        armor_groups = {fleshy = 20.8},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        speed_bonus = -0.01,
+        gravity_bonus = 0.01,
+        jump_bonus = 0,
 
-    minetest.register_craft({
-        output = 'xtraores:chestplate_rhenium',
-        recipe = {
-            {'xtraores:rhenium_bar', '', 'xtraores:rhenium_bar'},
-            {
-                'xtraores:rhenium_bar', 'xtraores:rhenium_bar',
-                'xtraores:rhenium_bar'
-            },
-            {
-                'xtraores:rhenium_bar', 'xtraores:rhenium_bar',
-                'xtraores:rhenium_bar'
-            }
-        }
-    })
+        armor_use = 1200,
 
-    armor:register_armor("xtraores:leggings_rhenium", {
-        description = "" .. core.colorize("#68fff6", "Rhenium leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 20.8%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.4%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 21%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 8%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 7"),
-        inventory_image = "xtraores_inv_leggings_rhenium.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.4,
-            armor_use = 40,
-            physics_speed = 0.21,
-            physics_jump = 0.08,
-            physics_gravity = -0.01
-        },
-        armor_groups = {fleshy = 20.8},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
+        helmet = {name = "helm"},
+        chestplate = {name = "chestguard", protection = 12},
+        leggings = {name = "leg protectors", protection = 12},
+        shield = {name = "shield"}
     })
 
-    minetest.register_craft({
-        output = 'xtraores:leggings_rhenium',
-        recipe = {
-            {
-                'xtraores:rhenium_bar', 'xtraores:rhenium_bar',
-                'xtraores:rhenium_bar'
-            }, {'xtraores:rhenium_bar', '', 'xtraores:rhenium_bar'},
-            {'xtraores:rhenium_bar', '', 'xtraores:rhenium_bar'}
-        }
-    })
+    -- Platinum
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Platinum",
+        level = 2,
 
-    armor:register_armor("xtraores:boots_rhenium", {
-        description = "" .. core.colorize("#68fff6", "Rhenium boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.8%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.4%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 21%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 8%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 7"),
-        inventory_image = "xtraores_inv_boots_rhenium.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.4,
-            armor_use = 40,
-            physics_speed = 0.21,
-            physics_jump = 0.08,
-            physics_gravity = -0.01
-        },
-        armor_groups = {fleshy = 15.8},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        protection = 12,
+        heal = 7,
 
-    minetest.register_craft({
-        output = 'xtraores:boots_rhenium',
-        recipe = {
-            {'', '', ''}, {'xtraores:rhenium_bar', '', 'xtraores:rhenium_bar'},
-            {'xtraores:rhenium_bar', '', 'xtraores:rhenium_bar'}
-        }
-    })
+        speed_bonus = 0.03,
+        jump_bonus = 0.00,
+        gravity_bonus = 0.00,
 
-    armor:register_armor("xtraores:shield_rhenium", {
-        description = "" .. core.colorize("#68fff6", "Rhenium shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 15.8%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.4%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 21%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 8%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -1%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 7"),
-        inventory_image = "xtraores_inv_shield_rhenium.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.4,
-            armor_use = 40,
-            physics_speed = 0.21,
-            physics_jump = 0.08,
-            physics_gravity = -0.01
-        },
-        armor_groups = {fleshy = 15.8},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        armor_use = 200,
 
-    minetest.register_craft({
-        output = 'xtraores:shield_rhenium',
-        recipe = {
-            {
-                'xtraores:rhenium_bar', 'xtraores:rhenium_bar',
-                'xtraores:rhenium_bar'
-            },
-            {
-                'xtraores:rhenium_bar', 'xtraores:rhenium_bar',
-                'xtraores:rhenium_bar'
-            }, {'', 'xtraores:rhenium_bar', ''}
-        }
+        head = {name = "chain helm"},
+        chestplate = {name = "chain mail", protection = 17},
+        leggings = {name = "chain leggings", protection = 17},
+        boots = {name = "chained boots"}
     })
 
-    ----------------vanadium set----------------------
-
-    armor:register_armor("xtraores:helmet_vanadium", {
-        description = "" .. core.colorize("#68fff6", "Vanadium helmet\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.0%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.5%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 25%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 10%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -2%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 8"),
-        inventory_image = "xtraores_inv_helmet_vanadium.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.5,
-            armor_use = 25,
-            physics_speed = 0.25,
-            physics_jump = 0.10,
-            physics_gravity = -0.02
-        },
-        armor_groups = {fleshy = 16.0},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+    -- Palladium
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Palladium",
+        level = 3,
 
-    minetest.register_craft({
-        output = 'xtraores:helmet_vanadium',
-        recipe = {
-            {
-                'xtraores:vanadium_bar', 'xtraores:vanadium_bar',
-                'xtraores:vanadium_bar'
-            }, {'xtraores:vanadium_bar', '', 'xtraores:vanadium_bar'},
-            {'', '', ''}
-        }
-    })
+        protection = 15,
+        heal = 12,
 
-    armor:register_armor("xtraores:chestplate_vanadium", {
-        description = "" .. core.colorize("#68fff6", "Vanadium platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.0%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.5%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 25%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 10%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -2%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 8"),
-        inventory_image = "xtraores_inv_chestplate_vanadium.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.5,
-            armor_use = 25,
-            physics_speed = 0.25,
-            physics_jump = 0.10,
-            physics_gravity = -0.02
-        },
-        armor_groups = {fleshy = 21.0},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        speed_bonus = 0.03,
+        jump_bonus = 0.00,
+        gravity_bonus = 0.00,
 
-    minetest.register_craft({
-        output = 'xtraores:chestplate_vanadium',
-        recipe = {
-            {'xtraores:vanadium_bar', '', 'xtraores:vanadium_bar'},
-            {
-                'xtraores:vanadium_bar', 'xtraores:vanadium_bar',
-                'xtraores:vanadium_bar'
-            },
-            {
-                'xtraores:vanadium_bar', 'xtraores:vanadium_bar',
-                'xtraores:vanadium_bar'
-            }
-        }
-    })
+        armor_use = 150,
 
-    armor:register_armor("xtraores:leggings_vanadium", {
-        description = "" .. core.colorize("#68fff6", "Vanadium leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.0%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.5%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 25%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 10%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -2%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 8"),
-        inventory_image = "xtraores_inv_leggings_vanadium.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.5,
-            armor_use = 25,
-            physics_speed = 0.25,
-            physics_jump = 0.10,
-            physics_gravity = -0.02
-        },
-        armor_groups = {fleshy = 21.0},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
+        chestplate = {name = "plate mail", protection = 20},
+        leggings = {protection = 20}
     })
 
-    minetest.register_craft({
-        output = 'xtraores:leggings_vanadium',
-        recipe = {
-            {
-                'xtraores:vanadium_bar', 'xtraores:vanadium_bar',
-                'xtraores:vanadium_bar'
-            }, {'xtraores:vanadium_bar', '', 'xtraores:vanadium_bar'},
-            {'xtraores:vanadium_bar', '', 'xtraores:vanadium_bar'}
-        }
-    })
+    -- Cobalt
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Cobalt",
+        level = 4,
 
-    armor:register_armor("xtraores:boots_vanadium", {
-        description = "" .. core.colorize("#68fff6", "Vanadium boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.0%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.5%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 25%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 10%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -2%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 8"),
-        inventory_image = "xtraores_inv_boots_vanadium.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.5,
-            armor_use = 25,
-            physics_speed = 0.25,
-            physics_jump = 0.10,
-            physics_gravity = -0.02
-        },
-        armor_groups = {fleshy = 16.0},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        protection = 15.2,
+        heal = 12.1,
 
-    minetest.register_craft({
-        output = 'xtraores:boots_vanadium',
-        recipe = {
-            {'', '', ''},
-            {'xtraores:vanadium_bar', '', 'xtraores:vanadium_bar'},
-            {'xtraores:vanadium_bar', '', 'xtraores:vanadium_bar'}
-        }
-    })
+        speed_bonus = 0.07,
+        jump_bonus = 0.00,
+        gravity_bonus = 0.00,
 
-    armor:register_armor("xtraores:shield_vanadium", {
-        description = "" .. core.colorize("#68fff6", "Vanadium shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.0%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.5%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 25%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 10%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -2%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 8"),
-        inventory_image = "xtraores_inv_shield_vanadium.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.5,
-            armor_use = 25,
-            physics_speed = 0.25,
-            physics_jump = 0.10,
-            physics_gravity = -0.02
-        },
-        armor_groups = {fleshy = 16.0},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        armor_use = 100,
 
-    minetest.register_craft({
-        output = 'xtraores:shield_vanadium',
-        recipe = {
-            {
-                'xtraores:vanadium_bar', 'xtraores:vanadium_bar',
-                'xtraores:vanadium_bar'
-            },
-            {
-                'xtraores:vanadium_bar', 'xtraores:vanadium_bar',
-                'xtraores:vanadium_bar'
-            }, {'', 'xtraores:vanadium_bar', ''}
-        }
+        chestplate = {name = "plate mail", protection = 20.2},
+        leggings = {protection = 20.2}
     })
 
-    ----------------rarium set----------------------
+    -- Thorium
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Thorium",
+        level = 5,
 
-    armor:register_armor("xtraores:helmet_rarium", {
-        description = "" .. core.colorize("#68fff6", "rarium heavy-helm\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.6%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 29%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 12%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -3%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 9"),
-        inventory_image = "xtraores_inv_helmet_rarium.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.6,
-            armor_use = 20,
-            physics_speed = 0.29,
-            physics_jump = 0.12,
-            physics_gravity = -0.03
-        },
-        armor_groups = {fleshy = 16.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
-
-    minetest.register_craft({
-        output = 'xtraores:helmet_rarium',
-        recipe = {
-            {
-                'xtraores:rarium_bar', 'xtraores:rarium_bar',
-                'xtraores:rarium_bar'
-            }, {'xtraores:rarium_bar', '', 'xtraores:rarium_bar'}, {'', '', ''}
-        }
-    })
+        protection = 15.4,
+        heal = 12.2,
 
-    armor:register_armor("xtraores:chestplate_rarium", {
-        description = "" .. core.colorize("#68fff6", "rarium heavy-platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.6%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 29%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 12%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -3%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 9"),
-        inventory_image = "xtraores_inv_chestplate_rarium.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.6,
-            armor_use = 20,
-            physics_speed = 0.29,
-            physics_jump = 0.12,
-            physics_gravity = -0.03
-        },
-        armor_groups = {fleshy = 21.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        speed_bonus = 0.11,
+        jump_bonus = 0.03,
+        gravity_bonus = 0.00,
 
-    minetest.register_craft({
-        output = 'xtraores:chestplate_rarium',
-        recipe = {
-            {'xtraores:rarium_bar', '', 'xtraores:rarium_bar'},
-            {
-                'xtraores:rarium_bar', 'xtraores:rarium_bar',
-                'xtraores:rarium_bar'
-            },
-            {
-                'xtraores:rarium_bar', 'xtraores:rarium_bar',
-                'xtraores:rarium_bar'
-            }
-        }
-    })
+        armor_use = 100,
 
-    armor:register_armor("xtraores:leggings_rarium", {
-        description = "" .. core.colorize("#68fff6", "rarium heavy-leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.6%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 29%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 12%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -3%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 9"),
-        inventory_image = "xtraores_inv_leggings_rarium.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.6,
-            armor_use = 20,
-            physics_speed = 0.29,
-            physics_jump = 0.12,
-            physics_gravity = -0.03
-        },
-        armor_groups = {fleshy = 21.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
+        chestplate = {name = "plate mail", protection = 20.4},
+        leggings = {protection = 20.4}
     })
 
-    minetest.register_craft({
-        output = 'xtraores:leggings_rarium',
-        recipe = {
-            {
-                'xtraores:rarium_bar', 'xtraores:rarium_bar',
-                'xtraores:rarium_bar'
-            }, {'xtraores:rarium_bar', '', 'xtraores:rarium_bar'},
-            {'xtraores:rarium_bar', '', 'xtraores:rarium_bar'}
-        }
-    })
+    -- Osmium
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Osmium",
+        level = 6,
 
-    armor:register_armor("xtraores:boots_rarium", {
-        description = "" .. core.colorize("#68fff6", "rarium heavy-boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.6%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 29%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 12%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -3%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 9"),
-        inventory_image = "xtraores_inv_boots_rarium.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.6,
-            armor_use = 20,
-            physics_speed = 0.29,
-            physics_jump = 0.12,
-            physics_gravity = -0.03
-        },
-        armor_groups = {fleshy = 16.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        protection = 15.6,
+        heal = 12.3,
 
-    minetest.register_craft({
-        output = 'xtraores:boots_rarium',
-        recipe = {
-            {'', '', ''}, {'xtraores:rarium_bar', '', 'xtraores:rarium_bar'},
-            {'xtraores:rarium_bar', '', 'xtraores:rarium_bar'}
-        }
-    })
+        speed_bonus = 0.16,
+        jump_bonus = 0.05,
+        gravity_bonus = 0.00,
 
-    armor:register_armor("xtraores:shield_rarium", {
-        description = "" .. core.colorize("#68fff6", "rarium heavy-shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.2%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.6%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 29%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 12%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -3%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 9"),
-        inventory_image = "xtraores_inv_shield_rarium.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.6,
-            armor_use = 20,
-            physics_speed = 0.29,
-            physics_jump = 0.12,
-            physics_gravity = -0.03
-        },
-        armor_groups = {fleshy = 16.2},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        armor_use = 60,
 
-    minetest.register_craft({
-        output = 'xtraores:shield_rarium',
-        recipe = {
-            {
-                'xtraores:rarium_bar', 'xtraores:rarium_bar',
-                'xtraores:rarium_bar'
-            },
-            {
-                'xtraores:rarium_bar', 'xtraores:rarium_bar',
-                'xtraores:rarium_bar'
-            }, {'', 'xtraores:rarium_bar', ''}
-        }
+        chestplate = {name = "plate mail", protection = 20.6},
+        leggings = {protection = 20.6}
     })
 
-    ----------------orichalcum set----------------------
-
-    armor:register_armor("xtraores:helmet_orichalcum", {
-        description = "" .. core.colorize("#68fff6", "orichalcum heavy-helm\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 33%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 14%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 10"),
-        inventory_image = "xtraores_inv_helmet_orichalcum.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.7,
-            armor_use = 17,
-            physics_speed = 0.33,
-            physics_jump = 0.14,
-            physics_gravity = -0.04
-        },
-        armor_groups = {fleshy = 16.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+    -- Rhenium
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Rhenium",
+        level = 7,
 
-    minetest.register_craft({
-        output = 'xtraores:helmet_orichalcum',
-        recipe = {
-            {
-                'xtraores:orichalcum_bar', 'xtraores:orichalcum_bar',
-                'xtraores:orichalcum_bar'
-            }, {'xtraores:orichalcum_bar', '', 'xtraores:orichalcum_bar'},
-            {'', '', ''}
-        }
-    })
+        protection = 15.8,
+        heal = 12.4,
 
-    armor:register_armor("xtraores:chestplate_orichalcum", {
-        description = "" ..
-            core.colorize("#68fff6", "orichalcum heavy-platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 33%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 14%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 10"),
-        inventory_image = "xtraores_inv_chestplate_orichalcum.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.7,
-            armor_use = 17,
-            physics_speed = 0.33,
-            physics_jump = 0.14,
-            physics_gravity = -0.04
-        },
-        armor_groups = {fleshy = 21.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        speed_bonus = 0.21,
+        jump_bonus = 0.08,
+        gravity_bonus = -0.01,
 
-    minetest.register_craft({
-        output = 'xtraores:chestplate_orichalcum',
-        recipe = {
-            {'xtraores:orichalcum_bar', '', 'xtraores:orichalcum_bar'}, {
-                'xtraores:orichalcum_bar', 'xtraores:orichalcum_bar',
-                'xtraores:orichalcum_bar'
-            }, {
-                'xtraores:orichalcum_bar', 'xtraores:orichalcum_bar',
-                'xtraores:orichalcum_bar'
-            }
-        }
-    })
+        armor_use = 40,
 
-    armor:register_armor("xtraores:leggings_orichalcum", {
-        description = "" ..
-            core.colorize("#68fff6", "orichalcum heavy-leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 33%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 14%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 10"),
-        inventory_image = "xtraores_inv_leggings_orichalcum.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.7,
-            armor_use = 17,
-            physics_speed = 0.33,
-            physics_jump = 0.14,
-            physics_gravity = -0.04
-        },
-        armor_groups = {fleshy = 21.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
+        chestplate = {name = "plate mail", protection = 20.8},
+        leggings = {protection = 20.8}
     })
 
-    minetest.register_craft({
-        output = 'xtraores:leggings_orichalcum',
-        recipe = {
-            {
-                'xtraores:orichalcum_bar', 'xtraores:orichalcum_bar',
-                'xtraores:orichalcum_bar'
-            }, {'xtraores:orichalcum_bar', '', 'xtraores:orichalcum_bar'},
-            {'xtraores:orichalcum_bar', '', 'xtraores:orichalcum_bar'}
-        }
-    })
+    -- Vanadium
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Vanadium",
+        level = 8,
 
-    armor:register_armor("xtraores:boots_orichalcum", {
-        description = "" .. core.colorize("#68fff6", "orichalcum heavy-boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 33%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 14%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 10"),
-        inventory_image = "xtraores_inv_boots_orichalcum.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.7,
-            armor_use = 17,
-            physics_speed = 0.33,
-            physics_jump = 0.14,
-            physics_gravity = -0.04
-        },
-        armor_groups = {fleshy = 16.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        protection = 16.0,
+        heal = 12.5,
 
-    minetest.register_craft({
-        output = 'xtraores:boots_orichalcum',
-        recipe = {
-            {'', '', ''},
-            {'xtraores:orichalcum_bar', '', 'xtraores:orichalcum_bar'},
-            {'xtraores:orichalcum_bar', '', 'xtraores:orichalcum_bar'}
-        }
-    })
+        speed_bonus = 0.25,
+        jump_bonus = 0.10,
+        gravity_bonus = -0.02,
 
-    armor:register_armor("xtraores:shield_orichalcum", {
-        description = "" ..
-            core.colorize("#68fff6", "orichalcum heavy-shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.4%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.7%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 33%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 14%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 10"),
-        inventory_image = "xtraores_inv_shield_orichalcum.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.7,
-            armor_use = 17,
-            physics_speed = 0.33,
-            physics_jump = 0.14,
-            physics_gravity = -0.04
-        },
-        armor_groups = {fleshy = 16.4},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        armor_use = 25,
 
-    minetest.register_craft({
-        output = 'xtraores:shield_orichalcum',
-        recipe = {
-            {
-                'xtraores:orichalcum_bar', 'xtraores:orichalcum_bar',
-                'xtraores:orichalcum_bar'
-            }, {
-                'xtraores:orichalcum_bar', 'xtraores:orichalcum_bar',
-                'xtraores:orichalcum_bar'
-            }, {'', 'xtraores:orichalcum_bar', ''}
-        }
+        chestplate = {name = "plate mail", protection = 21.0},
+        leggings = {protection = 21.0}
     })
-
-    ----------------titanium set----------------------
 
-    armor:register_armor("xtraores:helmet_titanium", {
-        description = "" .. core.colorize("#68fff6", "titanium heavy-helm\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.5%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.8%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 34%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 15%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4.5%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 11"),
-        inventory_image = "xtraores_inv_helmet_titanium.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.8,
-            armor_use = 15,
-            physics_speed = 0.34,
-            physics_jump = 0.15,
-            physics_gravity = -0.045
-        },
-        armor_groups = {fleshy = 16.5},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+    -- Vanadium
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Rarium",
+        level = 9,
 
-    minetest.register_craft({
-        output = 'xtraores:helmet_titanium',
-        recipe = {
-            {
-                'xtraores:titanium_bar', 'xtraores:titanium_bar',
-                'xtraores:titanium_bar'
-            }, {'xtraores:titanium_bar', '', 'xtraores:titanium_bar'},
-            {'', '', ''}
-        }
-    })
+        protection = 16.2,
+        heal = 12.6,
 
-    armor:register_armor("xtraores:chestplate_titanium", {
-        description = "" ..
-            core.colorize("#68fff6", "titanium heavy-platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.5%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.8%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 34%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 15%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4.5%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 11"),
-        inventory_image = "xtraores_inv_chestplate_titanium.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.8,
-            armor_use = 15,
-            physics_speed = 0.34,
-            physics_jump = 0.15,
-            physics_gravity = -0.045
-        },
-        armor_groups = {fleshy = 21.5},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        speed_bonus = 0.29,
+        jump_bonus = 0.12,
+        gravity_bonus = -0.03,
 
-    minetest.register_craft({
-        output = 'xtraores:chestplate_titanium',
-        recipe = {
-            {'xtraores:titanium_bar', '', 'xtraores:titanium_bar'},
-            {
-                'xtraores:titanium_bar', 'xtraores:titanium_bar',
-                'xtraores:titanium_bar'
-            },
-            {
-                'xtraores:titanium_bar', 'xtraores:titanium_bar',
-                'xtraores:titanium_bar'
-            }
-        }
-    })
+        armor_use = 20,
 
-    armor:register_armor("xtraores:leggings_titanium", {
-        description = "" ..
-            core.colorize("#68fff6", "titanium heavy-leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.5%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.8%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 34%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 15%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4.5%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 11"),
-        inventory_image = "xtraores_inv_leggings_titanium.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.8,
-            armor_use = 15,
-            physics_speed = 0.34,
-            physics_jump = 0.15,
-            physics_gravity = -0.045
-        },
-        armor_groups = {fleshy = 21.5},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
+        helmet = {name = "heavy helm"},
+        chestplate = {name = "heavy plate mail", protection = 21.2},
+        leggings = {name = "heavy leggings", protection = 21.2},
+        boots = {name = "heavy boots"},
+        shield = {name = "heavy shield"}
     })
 
-    minetest.register_craft({
-        output = 'xtraores:leggings_titanium',
-        recipe = {
-            {
-                'xtraores:titanium_bar', 'xtraores:titanium_bar',
-                'xtraores:titanium_bar'
-            }, {'xtraores:titanium_bar', '', 'xtraores:titanium_bar'},
-            {'xtraores:titanium_bar', '', 'xtraores:titanium_bar'}
-        }
-    })
+    -- Orichalcum
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Orichalcum",
+        level = 10,
 
-    armor:register_armor("xtraores:boots_titanium", {
-        description = "" .. core.colorize("#68fff6", "titanium heavy-boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.5%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.8%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 34%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 15%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4.5%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 11"),
-        inventory_image = "xtraores_inv_boots_titanium.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.8,
-            armor_use = 15,
-            physics_speed = 0.34,
-            physics_jump = 0.15,
-            physics_gravity = -0.045
-        },
-        armor_groups = {fleshy = 16.5},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        protection = 16.4,
+        heal = 12.7,
 
-    minetest.register_craft({
-        output = 'xtraores:boots_titanium',
-        recipe = {
-            {'', '', ''},
-            {'xtraores:titanium_bar', '', 'xtraores:titanium_bar'},
-            {'xtraores:titanium_bar', '', 'xtraores:titanium_bar'}
-        }
-    })
+        speed_bonus = 0.33,
+        jump_bonus = 0.14,
+        gravity_bonus = -0.04,
 
-    armor:register_armor("xtraores:shield_titanium", {
-        description = "" .. core.colorize("#68fff6", "titanium heavy-shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.5%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.8%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 34%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 15%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -4.5%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 11"),
-        inventory_image = "xtraores_inv_shield_titanium.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.8,
-            armor_use = 15,
-            physics_speed = 0.34,
-            physics_jump = 0.15,
-            physics_gravity = -0.045
-        },
-        armor_groups = {fleshy = 16.5},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        armor_use = 17,
 
-    minetest.register_craft({
-        output = 'xtraores:shield_titanium',
-        recipe = {
-            {
-                'xtraores:titanium_bar', 'xtraores:titanium_bar',
-                'xtraores:titanium_bar'
-            },
-            {
-                'xtraores:titanium_bar', 'xtraores:titanium_bar',
-                'xtraores:titanium_bar'
-            }, {'', 'xtraores:titanium_bar', ''}
-        }
+        helmet = {name = "heavy helm"},
+        chestplate = {name = "heavy plate mail", protection = 21.4},
+        leggings = {name = "heavy leggings", protection = 21.4},
+        boots = {name = "heavy boots"},
+        shield = {name = "heavy shield"}
     })
 
-    ----------------chromium set----------------------
+    -- Titanium
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Titanium",
+        level = 11,
 
-    armor:register_armor("xtraores:helmet_chromium", {
-        description = "" .. core.colorize("#68fff6", "chromium heavy-helm\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.9%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 35%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -5.0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 12"),
-        inventory_image = "xtraores_inv_helmet_chromium.png",
-        groups = {
-            armor_head = 1,
-            armor_heal = 12.9,
-            armor_use = 14,
-            physics_speed = 0.35,
-            physics_jump = 0.16,
-            physics_gravity = -0.05
-        },
-        armor_groups = {fleshy = 16.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        protection = 16.5,
+        heal = 12.8,
 
-    minetest.register_craft({
-        output = 'xtraores:helmet_chromium',
-        recipe = {
-            {
-                'xtraores:chromium_bar', 'xtraores:chromium_bar',
-                'xtraores:chromium_bar'
-            }, {'xtraores:chromium_bar', '', 'xtraores:chromium_bar'},
-            {'', '', ''}
-        }
-    })
+        speed_bonus = 0.34,
+        jump_bonus = 0.15,
+        gravity_bonus = -0.045,
 
-    armor:register_armor("xtraores:chestplate_chromium", {
-        description = "" ..
-            core.colorize("#68fff6", "chromium heavy-platemail\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.9%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 35%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -5.0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 12"),
-        inventory_image = "xtraores_inv_chestplate_chromium.png",
-        groups = {
-            armor_torso = 1,
-            armor_heal = 12.9,
-            armor_use = 14,
-            physics_speed = 0.35,
-            physics_jump = 0.16,
-            physics_gravity = -0.05
-        },
-        armor_groups = {fleshy = 21.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        armor_use = 15,
 
-    minetest.register_craft({
-        output = 'xtraores:chestplate_chromium',
-        recipe = {
-            {'xtraores:chromium_bar', '', 'xtraores:chromium_bar'},
-            {
-                'xtraores:chromium_bar', 'xtraores:chromium_bar',
-                'xtraores:chromium_bar'
-            },
-            {
-                'xtraores:chromium_bar', 'xtraores:chromium_bar',
-                'xtraores:chromium_bar'
-            }
-        }
+        helmet = {name = "heavy helm"},
+        chestplate = {name = "heavy plate mail", protection = 21.5},
+        leggings = {name = "heavy leggings", protection = 21.5},
+        boots = {name = "heavy boots"},
+        shield = {name = "heavy shield"}
     })
 
-    armor:register_armor("xtraores:leggings_chromium", {
-        description = "" ..
-            core.colorize("#68fff6", "chromium heavy-leggings\n") ..
-            core.colorize("#FFFFFF", "Protection: 21.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.9%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 35%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -5.0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 12"),
-        inventory_image = "xtraores_inv_leggings_chromium.png",
-        groups = {
-            armor_legs = 1,
-            armor_heal = 12.9,
-            armor_use = 14,
-            physics_speed = 0.35,
-            physics_jump = 0.16,
-            physics_gravity = -0.05
-        },
-        armor_groups = {fleshy = 21.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
 
-    minetest.register_craft({
-        output = 'xtraores:leggings_chromium',
-        recipe = {
-            {
-                'xtraores:chromium_bar', 'xtraores:chromium_bar',
-                'xtraores:chromium_bar'
-            }, {'xtraores:chromium_bar', '', 'xtraores:chromium_bar'},
-            {'xtraores:chromium_bar', '', 'xtraores:chromium_bar'}
-        }
-    })
+    -- Chromium
+    xtraores.register_armor_set(ArmorSet:new{
+        name = "Chromium",
+        level = 12,
 
-    armor:register_armor("xtraores:boots_chromium", {
-        description = "" .. core.colorize("#68fff6", "chromium heavy-boots\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.9%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 35%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -5.0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 12"),
-        inventory_image = "xtraores_inv_boots_chromium.png",
-        groups = {
-            armor_feet = 1,
-            armor_heal = 12.9,
-            armor_use = 14,
-            physics_speed = 0.35,
-            physics_jump = 0.16,
-            physics_gravity = -0.05
-        },
-        armor_groups = {fleshy = 16.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        protection = 16.6,
+        heal = 12.9,
 
-    minetest.register_craft({
-        output = 'xtraores:boots_chromium',
-        recipe = {
-            {'', '', ''},
-            {'xtraores:chromium_bar', '', 'xtraores:chromium_bar'},
-            {'xtraores:chromium_bar', '', 'xtraores:chromium_bar'}
-        }
-    })
+        speed_bonus = 0.35,
+        jump_bonus = 0.16,
+        gravity_bonus = -0.05,
 
-    armor:register_armor("xtraores:shield_chromium", {
-        description = "" .. core.colorize("#68fff6", "chromium heavy-shield\n") ..
-            core.colorize("#FFFFFF", "Protection: 16.6%\n") ..
-            core.colorize("#FFFFFF", "Heal chance: 12.9%\n") ..
-            core.colorize("#FFFFFF", "Speed bonus: 35%\n") ..
-            core.colorize("#FFFFFF", "Jump bonus: 16%\n") ..
-            core.colorize("#FFFFFF", "Gravity bonus: -5.0%\n") ..
-            core.colorize("#FFFFFF", "Xtraores armor level: 12"),
-        inventory_image = "xtraores_inv_shield_chromium.png",
-        groups = {
-            armor_shield = 1,
-            armor_heal = 12.9,
-            armor_use = 14,
-            physics_speed = 0.35,
-            physics_jump = 0.16,
-            physics_gravity = -0.05
-        },
-        armor_groups = {fleshy = 16.6},
-        damage_groups = {
-            cracky = 2,
-            snappy = 3,
-            choppy = 2,
-            crumbly = 1,
-            level = 2
-        }
-    })
+        armor_use = 15,
 
-    minetest.register_craft({
-        output = 'xtraores:shield_chromium',
-        recipe = {
-            {
-                'xtraores:chromium_bar', 'xtraores:chromium_bar',
-                'xtraores:chromium_bar'
-            },
-            {
-                'xtraores:chromium_bar', 'xtraores:chromium_bar',
-                'xtraores:chromium_bar'
-            }, {'', 'xtraores:chromium_bar', ''}
-        }
+        helmet = {name = "heavy helm"},
+        chestplate = {name = "heavy plate mail", protection = 21.6},
+        leggings = {name = "heavy leggings", protection = 21.6},
+        boots = {name = "heavy boots"},
+        shield = {name = "heavy shield"}
     })
-
 end
-
