@@ -80,7 +80,7 @@ if minetest.get_modpath("3d_armor") then
     function xtraores.register_armor_set(set)
         -- Internal name
         local lname = string.lower(set.name):gsub(" ", "_")
-        local ingot = 'xtraores:' .. set.name .. "_bar"
+        local ingot = 'xtraores:' .. lname .. "_bar"
         -- All parts share the same damage group values
         local damage_groups = {
             cracky = 2,
