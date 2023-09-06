@@ -1,5 +1,5 @@
 if minetest.get_modpath("awards") then
-    local S = awards.gettext
+    local S = awards.translator
 
     awards.register_award("platinum_crusaders", {
         title = S("Platinum Crusaders"),
