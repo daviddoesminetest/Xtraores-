@@ -244,6 +244,25 @@ xtraores.register_xtraore("Rarium", {
     cooktime = 90
 })
 
+xtraores.register_xtraore("Orichalcum", {
+    -- Xtraores level
+    level = 10,
+    -- Special Visuals
+    light_source=4,
+    -- Node Groups
+    groups = {cracky = 10},
+    -- Disable on_blast default behavior
+    disable_on_blast = true,
+    -- Ore clusters
+    clust_scarcity = 34 * 34 * 34,
+    clust_num_ores = 3,
+    clust_size = 3,
+    y_min = -31000,
+    y_max = -12500,
+    -- Bar cooking
+    cooktime = 120
+})
+
 xtraores.register_xtraore("Titanium", {
     -- Xtraores level
     level = 10,
